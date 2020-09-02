@@ -1,0 +1,5 @@
+include_directories()
+    LIBPAX_APPEND_SOURCES(
+	${CMAKE_CURRENT_SOURCE_DIR}/pax_sync.cpp
+    )
+

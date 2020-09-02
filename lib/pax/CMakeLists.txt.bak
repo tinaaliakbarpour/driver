@@ -1,0 +1,26 @@
+
+LIBPAX_REGISTER_COMPONENT("PAX" ENABLE_B200 ON "ENABLE_LIBPAX" OFF)
+
+    LIBPAX_APPEND_SOURCES(
+        ${CMAKE_CURRENT_SOURCE_DIR}/buffer_pool.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/byteswap.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/exception.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/platform.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/ranges.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/rx_dsp_core_200.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/rx_frontend_core_200.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/serial.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/static.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/stream.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/tasks.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/tx_dsp_core_200.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/udp_simple.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/udp_zero_copy.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/usrp2_fifo_ctrl.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/vrt_if_packet.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/wb_iface.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/pax_iface.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/pax_impl.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/tx_dsp_core_200.cpp
+    )
+

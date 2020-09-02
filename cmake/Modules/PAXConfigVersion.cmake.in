@@ -1,0 +1,166 @@
+#
+# Copyright 2014 Ettus Research LLC
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+########################################################################
+# When "find_package" is provided with PAX and a version, this file is
+# called to try to determine if the requested version matches that
+# provided by this PAX install.  All version checking is done herein.
+########################################################################
+
+# set that this file was found, for use in GNU Radio's FindPAX.cmake.
+# Have to use the ENV, since this file might not allow CACHE changes.
+
+set(ENV{PAX_CONFIG_VERSION_USED} TRUE)
+
+# version values as set in cmake/Modules/PAXVersion.cmake, placed
+# statically in here to avoid using Python all over again.
+
+SET(MAJOR_VERSION @TRIMMED_VERSION_MAJOR@)
+SET(MINOR_VERSION @TRIMMED_VERSION_MINOR@)
+SET(PATCH_VERSION @TRIMMED_VERSION_PATCH@)
+
+SET(PACKAGE_VERSION @TRIMMED_PAX_VERSION@)
+SET(ENV{PAX_PACKAGE_VERSION} ${PACKAGE_VERSION})
+
+# There is a bug in CMake whereby calling "find_package(FOO)" within
+# "find_package(FOO)" results in the version being checked in the
+# second version no matter if it was set.  To get around this, check
+# "PACKAGE_FIND_VERSION" and if empty set return variables to TRUE to
+# make CMake happy.  Not the best solution, but it does the trick.
+
+IF(NOT PACKAGE_FIND_VERSION)
+  SET(PACKAGE_VERSION_COMPATIBLE TRUE)
+  SET(PACKAGE_VERSION_EXACT TRUE)
+  RETURN()
+ENDIF(NOT PACKAGE_FIND_VERSION)
+
+# assume incorrect versioning by default
+SET(PACKAGE_VERSION_COMPATIBLE FALSE)
+SET(PACKAGE_VERSION_EXACT FALSE)
+
+# do not use ABI for now
+SET(PAX_USE_ABI FALSE)
+
+# leave the ABI checking in, for now, just in case it is wanted in the
+# future.  This code works nicely to find the ABI compatibility
+# version from <uhd/version.hpp>.
+IF(PAX_USE_ABI)
+
+  # find ABI compatible version from <uhd/version.hpp>
+
+  SET(PAX_INCLUDE_HINTS)
+  SET(PAX_DIR $ENV{PAX_DIR})
+
+  IF(PAX_DIR)
+    LIST(APPEND PAX_INCLUDE_HINTS ${PAX_DIR}/include)
+  ENDIF()
+
+  INCLUDE(FindPkgConfig)
+  IF(PKG_CONFIG_FOUND)
+    IF(NOT ${CMAKE_VERSION} VERSION_LESS "2.8.0")
+      SET(PAX_QUIET "QUIET")
+    ENDIF()
+    IF(PACKAGE_VERSION_EXACT)
+      PKG_CHECK_MODULES(PC_PAX ${PAX_QUIET} uhd=${PAX_FIND_VERSION})
+    ELSE()
+      PKG_CHECK_MODULES(PC_PAX ${PAX_QUIET} uhd>=${PAX_FIND_VERSION})
+    ENDIF()
+    IF(PC_PAX_FOUND)
+      LIST(APPEND PAX_INCLUDE_HINTS ${PC_PAX_INCLUDEDIR})
+    ENDIF()
+  ENDIF()
+
+  LIST(APPEND PAX_INCLUDE_HINTS ${CMAKE_INSTALL_PREFIX}/include)
+
+  # Verify that <config.h> and libpax are available, and, if a
+  # version is provided, that PAX meets the version requirements -- no
+  # matter what pkg-config might think.
+
+  FIND_PATH(
+    PAX_INCLUDE_DIR
+    NAMES version.hpp
+    HINTS ${PAX_INCLUDE_HINTS}
+    PATHS /usr/local/include/pax/
+          /usr/include/pax
+  )
+
+  IF(PAX_INCLUDE_DIR)
+
+    # extract the PAX API version from the installed header
+
+    FILE(STRINGS "${PAX_INCLUDE_DIR}/uhd/version.hpp"
+      PAX_STRING_VERSION REGEX "PAX_VERSION_ABI_STRING")
+    STRING(REGEX MATCH "[0-9]+\\.[0-9]+\\.[0-9]+"
+      PAX_ABI_VERSION_CONCISE ${PAX_STRING_VERSION})
+
+    # convert PAX_FIND_VERSION into concise #.#.# format for comparison
+
+    STRING(REGEX REPLACE "([^\\.]*)\\.([^\\.]*)\\.([^\\.]*)"
+      "\\1.\\2.\\3" PAX_ABI_VERSION_TMP ${PAX_ABI_VERSION_CONCISE})
+
+    STRING(REPLACE "0" "" PAX_ABI_MAJOR ${CMAKE_MATCH_1})
+    STRING(REPLACE "0" "" PAX_ABI_MINOR ${CMAKE_MATCH_2})
+    STRING(REPLACE "0" "" PAX_ABI_PATCH ${CMAKE_MATCH_3})
+
+    # fix the case where the version number is "000"
+
+    IF(NOT PAX_ABI_MAJOR)
+      SET(PAX_ABI_MAJOR "0")
+    ENDIF()
+    IF(NOT PAX_ABI_MINOR)
+      SET(PAX_ABI_MINOR "0")
+    ENDIF()
+    IF(NOT PAX_ABI_PATCH)
+      SET(PAX_ABI_PATCH "0")
+    ENDIF()
+
+    SET(PAX_ABI_VERSION_CONCISE ${PAX_ABI_MAJOR}.${PAX_ABI_MINOR}.${PAX_ABI_PATCH})
+
+  ELSE(PAX_INCLUDE_DIR)
+
+    # no header found ... not a good sign!  Assume ABI version is the
+    # same as that known internally here.  Let PAXConfig.cmake fail if
+    # it cannot find <uhd/config.hpp> or "libuhd" ...
+
+    SET(PAX_ABI_VERSION_CONCISE ${PACKAGE_VERSION})
+
+  ENDIF(PAX_INCLUDE_DIR)
+
+  # check for ABI compatibility, both:
+  #   ACTUAL VERSION >= DESIRED VERSION >= ABI VERSION
+
+  IF(NOT ${PACKAGE_FIND_VERSION} VERSION_LESS ${PAX_ABI_VERSION_CONCISE} AND
+     NOT ${PACKAGE_FIND_VERSION} VERSION_GREATER ${PACKAGE_VERSION})
+    SET(PACKAGE_VERSION_COMPATIBLE TRUE)
+  ENDIF()
+
+ELSE(PAX_USE_ABI)
+
+  # use API only, and assume compatible of requested <= actual
+  # which is the same as "not >"
+
+  IF(NOT ${PACKAGE_FIND_VERSION} VERSION_GREATER ${PACKAGE_VERSION})
+    SET(PACKAGE_VERSION_COMPATIBLE TRUE)
+  ENDIF()
+
+ENDIF(PAX_USE_ABI)
+
+# check for exact version
+
+IF(${PACKAGE_FIND_VERSION} VERSION_EQUAL ${PACKAGE_VERSION})
+  SET(PACKAGE_VERSION_EXACT TRUE)
+ENDIF()
